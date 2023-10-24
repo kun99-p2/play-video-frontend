@@ -1,3 +1,19 @@
+<template>
+  <div class="video-container">
+    <div class="container">
+      <video :key="video" controls autoplay muted>
+        <source :src="this.video" />
+      </video>
+    </div>
+    <div class="title">
+      <h2>{{ this.title }}</h2>
+      <p>Views: {{ this.views }}</p>
+    </div>
+  </div>
+  <div class="arrow left-arrow" @click="navigate('left')">&#8249;</div>
+  <div class="arrow right-arrow" @click="navigate('right')">&#8250;</div>
+</template>
+
 <script>
 import axios from "axios";
 export default {
@@ -6,6 +22,7 @@ export default {
       video: "",
       videos: [],
       title: "",
+      views: "",
       i: 0,
     };
   },
@@ -26,7 +43,18 @@ export default {
       }
       this.video = this.videos[this.i][0].file;
       this.title = this.videos[this.i][0].metadata.title;
+      this.increaseViews(this.videos[this.i][0].metadata.id);
     },
+    async increaseViews(videoId) {
+      try {
+        const response = await axios.post(
+          "http://localhost:5000/increment/"+videoId
+        );
+        this.views = response.data.views;
+      } catch (error) {
+        console.error("Couldn't increment views.");
+      }
+    }
   },
   beforeMount() {
     axios
@@ -45,29 +73,17 @@ export default {
         id: urlParams.get("vid"),
       })
       .then((response) => {
+        const vid = response.data.video[0].metadata.id;
         this.video = response.data.video[0].file;
         this.title = response.data.video[0].metadata.title;
+        this.increaseViews(vid);
       })
       .catch((error) => {
         console.error("Couldn't fetch video:", error);
       });
-  }
+  },
 };
 </script>
-<template>
-  <div class="video-container">
-    <div class="container">
-      <video :key="video" controls autoplay>
-        <source :src="this.video" />
-      </video>
-    </div>
-    <div class="title">
-      <h2>{{ this.title }}</h2>
-    </div>
-  </div>
-  <div class="arrow left-arrow" @click="navigate('left')">&#8249;</div>
-  <div class="arrow right-arrow" @click="navigate('right')">&#8250;</div>
-</template>
 
 <style>
 .video-container {
@@ -83,6 +99,10 @@ export default {
   height: 90%;
 }
 .title {
+  position: absolute;
+  color: black;
+}
+.views {
   position: absolute;
   color: black;
 }
