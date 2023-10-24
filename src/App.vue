@@ -3,32 +3,62 @@ import axios from "axios";
 export default {
   data() {
     return {
-      video: null,
-      title: ""
-    }
+      video: "",
+      videos: [],
+      title: "",
+      i: 0,
+    };
+  },
+  methods: {
+    navigate(direction) {
+      if (direction === "right") {
+        if (this.i + 1 < this.videos.length) {
+          this.i++;
+        } else {
+          this.i = 0;
+        }
+      } else {
+        if (this.i - 1 >= 0) {
+          this.i--;
+        } else {
+          this.i = this.videos.length - 1;
+        }
+      }
+      this.video = this.videos[this.i][0].file;
+      this.title = this.videos[this.i][0].metadata.title;
+    },
+  },
+  beforeMount() {
+    axios
+      .get("http://localhost:5001/videos")
+      .then((response) => {
+        this.videos = response.data.videos;
+      })
+      .catch((error) => {
+        console.error("Couldn't fetch videos:", error);
+      });
   },
   mounted() {
     const urlParams = new URLSearchParams(window.location.search);
     axios
       .post("http://localhost:5001/video", {
-        id: urlParams.get('vid'),
+        id: urlParams.get("vid"),
       })
       .then((response) => {
-        this.video = response.data.video;
-        this.title = response.data.title;
-        console.log(this.video)
+        this.video = response.data.video[0].file;
+        this.title = response.data.video[0].metadata.title;
       })
       .catch((error) => {
         console.error("Couldn't fetch video:", error);
       });
-  },
+  }
 };
 </script>
 <template>
   <div class="video-container">
-    <div class="container" v-if="video">
-      <video controls>
-        <source :src="video" />
+    <div class="container">
+      <video :key="video" controls autoplay>
+        <source :src="this.video" />
       </video>
     </div>
     <div class="title">
