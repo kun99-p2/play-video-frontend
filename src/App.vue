@@ -1,7 +1,11 @@
 <template>
   <div class="video-container">
     <div class="container">
-      <video ref="videoPlayer" class="video-js"></video>
+      <video
+        ref="videoPlayer"
+        class="video-js vjs-default-skin"
+        @ended="navigate('right')"
+      ></video>
     </div>
     <div class="title">
       <h2 style="color: white">{{ this.title }}</h2>
@@ -15,7 +19,6 @@
 <script>
 import axios from "axios";
 import videojs from "video.js";
-import Hls from "hls.js";
 export default {
   data() {
     return {
@@ -24,6 +27,7 @@ export default {
       video: "",
       videos: [],
       title: "",
+      desc: "",
       views: "",
       i: 0,
       m3u8: "",
@@ -31,20 +35,20 @@ export default {
     };
   },
   methods: {
-    clickedVideo(id, title) {
+    clickedVideo(id, user, title) {
       window.location.href =
         "http://localhost:4001/video?vid=" +
         id +
         "&user=" +
-        this.user +
+        user +
         "&title=" +
-        title + 
+        title +
         "&i=" +
         this.i;
     },
     navigate(direction) {
       if (direction === "right") {
-        if (this.i >= this.videos.length-1) {
+        if (this.i >= this.videos.length - 1) {
           this.i = 0;
         } else {
           this.i++;
@@ -54,17 +58,9 @@ export default {
       }
       this.clickedVideo(
         this.videos[this.i][0].metadata.id,
+        this.videos[this.i][0].metadata.user,
         this.videos[this.i][0].metadata.title
       );
-      // try {
-      //   const response = await axios.get("http://localhost:5001/spec/" + this.i);
-      //   const newVideoSource = response.data.video[0].file;
-      //   this.initVideo(newVideoSource);
-      //   this.title = this.videos[this.i][0].metadata.title;
-      //   this.increaseViews(this.videos[this.i][0].metadata.id);
-      // } catch (error) {
-      //   console.error("error:", error);
-      // }
     },
     async increaseViews(videoId) {
       try {
@@ -76,32 +72,19 @@ export default {
         console.error("Couldn't increment views.");
       }
     },
-    initVideo(m3u8) {
-      if (this.player) {
-        this.player.dispose();
-      }
+    initVideo() {
       this.player = videojs(this.$refs.videoPlayer, {
-        autoplay: true,
         controls: true,
+        autoplay: true,
+        aspectRatio: '4:3',
         sources: [
           {
-            src: m3u8,
+            src: this.m3u8,
             type: "application/x-mpegURL",
           },
         ],
       });
-    },
-  },
-  beforeMount() {
-    axios
-      .get("http://localhost:5001/videos")
-      .then((response) => {
-        this.videos = response.data.videos;
-        console.log(this.videos);
-      })
-      .catch((error) => {
-        console.error("Couldn't fetch videos:", error);
-      });
+    }
   },
   mounted() {
     const urlParams = new URLSearchParams(window.location.search);
@@ -116,17 +99,31 @@ export default {
       })
       .then((response) => {
         const vid = this.id;
-        console.log(response.data.m3u8);
+        console.log(response.data);
         this.title = response.data.metadata.title;
+        this.desc = response.data.metadata.desc;
         this.m3u8 = response.data.m3u8;
         this.increaseViews(vid);
-        this.initVideo(this.m3u8);
-        const hls = new Hls();
-        hls.loadSource(this.m3u8);
-        hls.attachMedia(this.player);
+        this.initVideo();
+        this.player.on("pause", () => {
+          this.$refs.videoPlayer.pause();
+        });
+        this.player.on("play", () => {
+          this.$refs.videoPlayer.play();
+        });
       })
       .catch((error) => {
         console.error("Couldn't fetch video:", error);
+      });
+
+    axios
+      .get("http://localhost:5001/videos")
+      .then((response) => {
+        this.videos = response.data.videos;
+        console.log(this.videos);
+      })
+      .catch((error) => {
+        console.error("Couldn't fetch videos:", error);
       });
   },
   beforeDestroy() {
@@ -151,6 +148,8 @@ export default {
 .container video {
   width: 100%;
   height: 90%;
+  width: 800px;
+  height: 300px;
 }
 .title {
   position: absolute;
